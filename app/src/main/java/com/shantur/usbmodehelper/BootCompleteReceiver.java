@@ -29,6 +29,21 @@ public class BootCompleteReceiver extends BroadcastReceiver {
                     });
                 }
             });
+
+
+            MainActivity.setPowerOtgDevicesMode(MainActivity.getSavedKey(context, MainActivity.POWER_OTG_DEVICES), new MainActivity.Callback() {
+                @Override
+                public void onComplete(List<String> result) {
+                    Log.d("USBModeHelper", "OnBoot DisablePowerOtgDevices Result : " + result.toString());
+                    MainActivity.getCurrentPowerOtgDevicesMode(new MainActivity.Callback() {
+                        @Override
+                        public void onComplete(List<String> result) {
+                            Log.d("USBModeHelper", "OnBoot DisablePowerOtgDevices : " + result.toString());
+                        }
+                    });
+                }
+            });
+
         }
     }
 }

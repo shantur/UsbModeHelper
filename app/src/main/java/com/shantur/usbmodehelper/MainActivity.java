@@ -11,7 +11,6 @@ import android.widget.CheckedTextView;
 import android.widget.TextView;
 
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import eu.chainfire.libsuperuser.Shell;
 
@@ -19,12 +18,15 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String PREFS_NAME = "SharedPrefs";
     public static final String FAST_CHARGE_KEY = "FastChargeStatus";
+    public static final String POWER_OTG_DEVICES = "PowerOtgDevices";
     public static final String SET_ON_BOOT_KEY = "SetOnBoot";
 
     private CheckedTextView mFastChargeCheck;
     private CheckedTextView mSetOnBootCheck;
     private TextView mCurrentStatus;
-
+    private CheckedTextView mDisablePowerOtgDevicesCheck;
+    private String mFastChargeStatus = "";
+    private String mDisablePowerOtgDevicesStatus = "";
 
 
     @Override
@@ -43,6 +45,21 @@ public class MainActivity extends AppCompatActivity {
                 saveKey(MainActivity.this, FAST_CHARGE_KEY, newState);
             }
         });
+
+
+        mDisablePowerOtgDevicesCheck = (CheckedTextView) findViewById(R.id.disable_power_otg_check);
+
+        mDisablePowerOtgDevicesCheck.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                boolean newState = !mDisablePowerOtgDevicesCheck.isChecked();
+                mDisablePowerOtgDevicesCheck.setChecked(newState);
+                setPowerOtgDevicesMode(newState);
+                saveKey(MainActivity.this, POWER_OTG_DEVICES, newState);
+            }
+        });
+
 
         mSetOnBootCheck = (CheckedTextView) findViewById(R.id.set_on_boot_check);
 
@@ -78,14 +95,64 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        mFastChargeStatus = "";
+        mDisablePowerOtgDevicesStatus = "";
         getCurrentFastChargeValue();
+        getCurrentPowerOtgDevicesMode();
         mSetOnBootCheck.setChecked(getSavedKey(this, SET_ON_BOOT_KEY));
     }
 
-    private void refreshStatus(String fast_charge_mode) {
-        mCurrentStatus.setText("Status : " + fast_charge_mode);
+    private void refreshStatus() {
+        mCurrentStatus.setText("Status : \n\n" + mFastChargeStatus + "\n\n" + mDisablePowerOtgDevicesStatus);
     }
 
+    private void setPowerOtgDevicesMode(boolean enabled) {
+
+        setPowerOtgDevicesMode(enabled, new Callback() {
+            @Override
+            public void onComplete(List<String> result) {
+                getCurrentPowerOtgDevicesMode();
+            }
+        });
+    }
+
+    private void getCurrentPowerOtgDevicesMode() {
+        getCurrentPowerOtgDevicesMode(new Callback() {
+            @Override
+            public void onComplete(List<String> result) {
+                String powerOtg = "";
+
+                if(result != null && result.size() > 0) {
+                    powerOtg = result.get(0);
+                }
+
+                String status = "Unknown";
+
+                if (powerOtg.equals("1")) {
+                    status = "Enabled";
+                    mDisablePowerOtgDevicesCheck.setChecked(true);
+                } else if (powerOtg.equals("0")){
+                    status = "Disabled";
+                    mDisablePowerOtgDevicesCheck.setChecked(false);
+                }
+
+                mDisablePowerOtgDevicesStatus = "DisablePowerOtgDevices - " + status;
+                refreshStatus();
+            }
+        });
+    }
+
+    public static void getCurrentPowerOtgDevicesMode(Callback callback) {
+        runCommand("cat /sys/kernel/usbhost/usbhost_fixed_install_mode", callback);
+    }
+
+
+    public static void setPowerOtgDevicesMode(boolean enabled, Callback callback) {
+        Log.d("USBModeHelper", "DisablePowerOtgDevices (FixedInstall) Mode : " + enabled);
+        String value = enabled ? "1" : "0";
+
+        runCommand("echo " + value + " > /sys/kernel/usbhost/usbhost_fixed_install_mode", callback);
+    }
 
     private void setFastChargeMode(boolean enabled) {
         setFastChargeMode(enabled,  new Callback() {
@@ -124,7 +191,8 @@ public class MainActivity extends AppCompatActivity {
                     mFastChargeCheck.setChecked(false);
                 }
 
-                refreshStatus("FastChargeHostMode - " + status);
+                mFastChargeStatus = "FastChargeHostMode - " + status;
+                refreshStatus();
             }
         });
     }
