@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">UsbModeHelper</string>
+    <string name="fast_charge_text">Fast Charge in host mode</string>
+    <string name="set_on_boot_text">Set on boot</string>
+</resources>
